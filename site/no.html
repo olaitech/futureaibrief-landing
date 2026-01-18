@@ -35,6 +35,20 @@
     canvas { touch-action: none; }
     html { scroll-behavior: smooth; }
 
+    #fx-bg{
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(1200px 600px at 70% 30%, rgba(120,90,255,.22), transparent 60%),
+        radial-gradient(900px 500px at 20% 70%, rgba(0,190,255,.14), transparent 65%),
+        #000;
+    }
+    main{ position: relative; z-index: 1; }
+
     .nav-btn{
       display:inline-flex;
       align-items:center;
@@ -83,6 +97,16 @@
       border-color: rgba(255,255,255,.35);
       box-shadow: 0 16px 40px rgba(0,0,0,.35);
     }
+
+    .footer-wrap { width:100%; padding: 48px 24px; }
+    .footer-inner { max-width: 1100px; margin-left:auto; text-align: right; }
+    .footer-card { border: 1px solid rgba(255,255,255,.10); border-radius: 22px; background: rgba(10,10,12,.35); backdrop-filter: blur(10px); position: relative; z-index: 1; }
+    .footer-grid { display:grid; gap: 28px; grid-template-columns: repeat(3,minmax(0,1fr)); padding: 26px; }
+    .footer-title { font-weight:600; opacity:.9; margin-bottom:12px; }
+    .footer-link { display:block; padding: 8px 0; opacity:.7; text-decoration:none; }
+    .footer-link:hover { opacity: 1; }
+    .footer-meta { padding: 0 26px 22px 26px; opacity:.55; font-size: 14px; }
+    @media (max-width: 900px){ .footer-grid{ grid-template-columns: 1fr; } }
 
     .cookie-banner{
       position: fixed;
@@ -164,6 +188,7 @@
 </head>
 
 <body class="min-h-screen bg-neutral-950 text-neutral-100">
+  <canvas id="fx-bg" aria-hidden="true"></canvas>
   <!-- Top bar -->
   <header id="top" class="fixed top-0 left-0 w-full z-50 bg-black/90 backdrop-blur">
     <div class="max-w-7xl mx-auto px-5 py-2 flex items-center justify-between">
@@ -193,8 +218,7 @@
 
   <main class="relative">
     <!-- HERO med shader -->
-    <section class="relative w-full h-[calc(100vh-73px)] overflow-hidden bg-black pt-24">
-      <canvas id="shader-canvas" class="absolute inset-0 h-full w-full"></canvas>
+    <section class="hero relative w-full h-[calc(100vh-73px)] overflow-hidden bg-transparent pt-24">
 
       <div class="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/65"></div>
 
@@ -237,9 +261,6 @@
 
     <!-- LOWER AREA WRAPPER -->
     <section class="relative overflow-hidden">
-      <div id="dotted-surface" class="pointer-events-none absolute inset-0 -z-10"></div>
-      <div class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/55 via-neutral-950/70 to-neutral-950"></div>
-
       <!-- Ambitions -->
       <section id="ambitions" class="anchor-offset mx-auto max-w-6xl px-5 pb-20 pt-14">
         <h2 class="text-2xl font-semibold md:text-3xl">Ambisjoner</h2>
@@ -376,17 +397,34 @@
         </div>
       </section>
 
-      <footer class="border-t border-white/10 py-10">
-        <div class="mx-auto max-w-6xl px-5 text-sm text-white/50">
-          (c) <span class="js-year"></span> FutureBrief. Alle rettigheter reservert.
-        </div>
-
-        <div class="mt-10 text-xs text-white/40 flex items-center gap-2">
-          <span class="opacity-60">*</span>
-          <span>
-            Bygget av <span class="text-white/70 font-medium">Kewin</span> -
-            WebGL2 & Three.js eksperimenter
-          </span>
+      <footer class="footer-wrap">
+        <div class="footer-inner">
+          <div class="footer-card">
+            <div class="footer-grid">
+              <div>
+                <div class="footer-title">Produkt</div>
+                <a class="footer-link" href="funksjoner.html">Funksjoner</a>
+                <a class="footer-link" href="priser.html">Priser</a>
+                <a class="footer-link" href="anmeldelser.html">Anmeldelser</a>
+                <a class="footer-link" href="integrasjoner.html">Integrasjoner</a>
+              </div>
+              <div>
+                <div class="footer-title">Selskap</div>
+                <a class="footer-link" href="faq.html">FAQ</a>
+                <a class="footer-link" href="om.html">Om</a>
+                <a class="footer-link" href="personvern.html">Personvern</a>
+                <a class="footer-link" href="vilkar.html">Vilkår</a>
+              </div>
+              <div>
+                <div class="footer-title">Ressurser</div>
+                <a class="footer-link" href="blogg.html">Blogg</a>
+                <a class="footer-link" href="endringslogg.html">Endringslogg</a>
+                <a class="footer-link" href="profil.html">Profil</a>
+                <a class="footer-link" href="hjelp.html">Hjelp</a>
+              </div>
+            </div>
+            <div class="footer-meta">(c) <span class="js-year"></span> FutureBrief. Alle rettigheter reservert.</div>
+          </div>
         </div>
       </footer>
     </section>
@@ -406,13 +444,82 @@
     </div>
   </div>
 
-  <!-- Three.js (CDN) -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-
   <script>
     document.querySelectorAll('.js-year').forEach(el => {
       el.textContent = new Date().getFullYear();
     });
+
+    (() => {
+      const c = document.getElementById('fx-bg');
+      if (!c) return;
+      const ctx = c.getContext('2d', { alpha: true });
+      let w = 0, h = 0, dpr = 1, particles = [], mx = 0, my = 0, tx = 0, ty = 0;
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        w = c.width = Math.floor(window.innerWidth * dpr);
+        h = c.height = Math.floor(window.innerHeight * dpr);
+        c.style.width = window.innerWidth + 'px';
+        c.style.height = window.innerHeight + 'px';
+
+        particles = Array.from({ length: 52 }, () => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: (18 + Math.random() * 60) * dpr,
+          vx: (-0.22 + Math.random() * 0.44) * dpr,
+          vy: (-0.22 + Math.random() * 0.44) * dpr,
+          a: 0.06 + Math.random() * 0.10
+        }));
+      }
+
+      function draw() {
+        mx += (tx - mx) * 0.06;
+        my += (ty - my) * 0.06;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'lighter';
+
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(0, 0, w, h);
+
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.x < -p.r) p.x = w + p.r;
+          if (p.x > w + p.r) p.x = -p.r;
+          if (p.y < -p.r) p.y = h + p.r;
+          if (p.y > h + p.r) p.y = -p.r;
+
+          const px = p.x + (mx - w * 0.5) * 0.02;
+          const py = p.y + (my - h * 0.5) * 0.02;
+
+          const g = ctx.createRadialGradient(px, py, 0, px, py, p.r);
+          g.addColorStop(0, `rgba(160,120,255,${p.a})`);
+          g.addColorStop(0.45, `rgba(0,200,255,${p.a * 0.55})`);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(px, py, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.globalCompositeOperation = 'source-over';
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize, { passive: true });
+      window.addEventListener('pointermove', (e) => {
+        tx = e.clientX * dpr;
+        ty = e.clientY * dpr;
+      }, { passive: true });
+
+      resize();
+      tx = window.innerWidth * dpr * 0.5;
+      ty = window.innerHeight * dpr * 0.5;
+      draw();
+    })();
 
     // Cookie consent (simple, language-aware)
     (function () {
@@ -460,233 +567,6 @@
       acceptNecessary.addEventListener('click', () => setConsent('necessary'));
     })();
 
-    // =========================
-    // 1) WebGL2 Shader (Hero)
-    // =========================
-    const shaderCanvas = document.getElementById('shader-canvas');
-
-    const vertexSrc = `#version 300 es
-    precision highp float;
-    in vec4 position;
-    void main(){gl_Position=position;}`;
-
-    const fragSrc = `#version 300 es
-    precision highp float;
-    out vec4 O;
-    uniform vec2 resolution;
-    uniform float time;
-    #define FC gl_FragCoord.xy
-    #define T time
-    #define R resolution
-    #define MN min(R.x,R.y)
-    float rnd(vec2 p) {
-      p=fract(p*vec2(12.9898,78.233));
-      p+=dot(p,p+34.56);
-      return fract(p.x*p.y);
-    }
-    float noise(in vec2 p) {
-      vec2 i=floor(p), f=fract(p), u=f*f*(3.-2.*f);
-      float a=rnd(i), b=rnd(i+vec2(1,0)), c=rnd(i+vec2(0,1)), d=rnd(i+1.);
-      return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);
-    }
-    float fbm(vec2 p) {
-      float t=.0, a=1.; mat2 m=mat2(1.,-.5,.2,1.2);
-      for (int i=0; i<5; i++) { t+=a*noise(p); p*=2.*m; a*=.5; }
-      return t;
-    }
-    float clouds(vec2 p) {
-      float d=1., t=.0;
-      for (float i=.0; i<3.; i++) {
-        float a=d*fbm(i*10.+p.x*.2+.2*(1.+i)*p.y+d+i*i+p);
-        t=mix(t,d,a); d=a; p*=2./(i+1.);
-      }
-      return t;
-    }
-    void main(void) {
-      vec2 uv=(FC-.5*R)/MN,st=uv*vec2(2,1);
-      vec3 col=vec3(0);
-      float bg=clouds(vec2(st.x+T*.5,-st.y));
-      uv*=1.-.3*(sin(T*.2)*.5+.5);
-      for (float i=1.; i<12.; i++) {
-        uv+=.1*cos(i*vec2(.1+.01*i, .8)+i*i+T*.5+.1*uv.x);
-        vec2 p=uv;
-        float d=length(p);
-        col+=.00125/d*(cos(sin(i)*vec3(1,2,3))+1.);
-        float b=noise(i+p+bg*1.731);
-        col+=.002*b/length(max(p,vec2(b*p.x*.02,p.y)));
-        col=mix(col,vec3(bg*.984,bg*.573,bg*.235),d);
-      }
-      O=vec4(col,1);
-    }`;
-
-    function createShader(gl, type, src) {
-      const sh = gl.createShader(type);
-      gl.shaderSource(sh, src);
-      gl.compileShader(sh);
-      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(sh));
-        gl.deleteShader(sh);
-        return null;
-      }
-      return sh;
-    }
-
-    function createProgram(gl, vsSrc, fsSrc) {
-      const vs = createShader(gl, gl.VERTEX_SHADER, vsSrc);
-      const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSrc);
-      if (!vs || !fs) return null;
-      const prog = gl.createProgram();
-      gl.attachShader(prog, vs);
-      gl.attachShader(prog, fs);
-      gl.linkProgram(prog);
-      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        console.error(gl.getProgramInfoLog(prog));
-        gl.deleteProgram(prog);
-        return null;
-      }
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
-      return prog;
-    }
-
-    const heroGl = shaderCanvas.getContext('webgl2', { antialias: true, alpha: false });
-    if (heroGl) {
-      const prog = createProgram(heroGl, vertexSrc, fragSrc);
-      if (prog) {
-        const verts = new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]);
-        const buf = heroGl.createBuffer();
-        heroGl.bindBuffer(heroGl.ARRAY_BUFFER, buf);
-        heroGl.bufferData(heroGl.ARRAY_BUFFER, verts, heroGl.STATIC_DRAW);
-
-        const vao = heroGl.createVertexArray();
-        heroGl.bindVertexArray(vao);
-
-        const posLoc = heroGl.getAttribLocation(prog, 'position');
-        heroGl.enableVertexAttribArray(posLoc);
-        heroGl.vertexAttribPointer(posLoc, 2, heroGl.FLOAT, false, 0, 0);
-
-        const uRes = heroGl.getUniformLocation(prog, 'resolution');
-        const uTime = heroGl.getUniformLocation(prog, 'time');
-
-        function heroResize() {
-          const dpr = Math.max(1, 0.5 * window.devicePixelRatio);
-          const rect = shaderCanvas.getBoundingClientRect();
-          const w = Math.max(1, Math.floor(rect.width * dpr));
-          const h = Math.max(1, Math.floor(rect.height * dpr));
-          if (shaderCanvas.width !== w || shaderCanvas.height !== h) {
-            shaderCanvas.width = w;
-            shaderCanvas.height = h;
-            heroGl.viewport(0, 0, w, h);
-          }
-        }
-
-        const start = performance.now();
-        function heroFrame(now) {
-          heroResize();
-          heroGl.useProgram(prog);
-          heroGl.bindVertexArray(vao);
-          heroGl.uniform2f(uRes, shaderCanvas.width, shaderCanvas.height);
-          heroGl.uniform1f(uTime, (now - start) * 0.001);
-          heroGl.drawArrays(heroGl.TRIANGLE_STRIP, 0, 4);
-          requestAnimationFrame(heroFrame);
-        }
-
-        window.addEventListener('resize', heroResize, { passive: true });
-        requestAnimationFrame(heroFrame);
-      }
-    }
-
-    // =========================
-    // 2) Dotted Surface (Three.js)
-    // =========================
-    const dottedContainer = document.getElementById('dotted-surface');
-
-    if (window.THREE && dottedContainer) {
-      const THREE = window.THREE;
-
-      const scene = new THREE.Scene();
-      scene.fog = new THREE.Fog(0x111827, 2000, 10000);
-
-      const camera = new THREE.PerspectiveCamera(
-        60,
-        window.innerWidth / window.innerHeight,
-        1,
-        10000
-      );
-      camera.position.set(0, 355, 1220);
-
-      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(scene.fog.color, 0);
-
-      dottedContainer.appendChild(renderer.domElement);
-
-      const SEPARATION = 150;
-      const AMOUNTX = 40;
-      const AMOUNTY = 60;
-
-      const geometry = new THREE.BufferGeometry();
-      const positions = [];
-      const colors = [];
-
-      for (let ix = 0; ix < AMOUNTX; ix++) {
-        for (let iy = 0; iy < AMOUNTY; iy++) {
-          const x = ix * SEPARATION - (AMOUNTX * SEPARATION) / 2;
-          const y = 0;
-          const z = iy * SEPARATION - (AMOUNTY * SEPARATION) / 2;
-          positions.push(x, y, z);
-          colors.push(200 / 255, 200 / 255, 200 / 255);
-        }
-      }
-
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-      const material = new THREE.PointsMaterial({
-        size: 8,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.55,
-        sizeAttenuation: true,
-        depthWrite: false
-      });
-
-      const points = new THREE.Points(geometry, material);
-      scene.add(points);
-
-      let count = 0;
-
-      function dottedResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      }
-
-      function animate() {
-        const positionAttribute = geometry.attributes.position;
-        const arr = positionAttribute.array;
-
-        let i = 0;
-        for (let ix = 0; ix < AMOUNTX; ix++) {
-          for (let iy = 0; iy < AMOUNTY; iy++) {
-            const idx = i * 3;
-            arr[idx + 1] =
-              Math.sin((ix + count) * 0.3) * 50 +
-              Math.sin((iy + count) * 0.5) * 50;
-            i++;
-          }
-        }
-
-        positionAttribute.needsUpdate = true;
-        renderer.render(scene, camera);
-        count += 0.1;
-        requestAnimationFrame(animate);
-      }
-
-      window.addEventListener('resize', dottedResize, { passive: true });
-      animate();
-    }
   </script>
 </body>
 </html>
